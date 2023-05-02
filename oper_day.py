@@ -13,7 +13,7 @@
 
 """
 
-
+import sqlite3
 import psycopg2
 from config_con_set import host, user, password, db_name
 
@@ -24,7 +24,7 @@ connection = psycopg2.connect(
     database=db_name
 )
 
-sql = """
+sql_set = """
     SELECT to_char(pur.datecommit, 'dd-mm-yyyy'),
     ses.cashnum as kassa, ses.shopnum as mag,
     pro.name, pro.erpcode,
@@ -42,10 +42,10 @@ order by pur.id desc limit 65;
     """
 
 
-def sql_query(connection, sql):
+def sql_query(connection, sql_set):
     try:
         with connection.cursor() as cursor:
-            cursor.execute(sql)
+            cursor.execute(sql_set)
             print(*cursor.fetchall(), sep='\n')
     except Exception as _ex:
         print("[INFO] Error while working with PostgreSQL", _ex)
@@ -55,4 +55,43 @@ def sql_query(connection, sql):
             print("[INFO] PostgeSQL connection closed")
 
 
-sql_query(connection, sql)
+#sql_query(connection, sql_set)
+
+
+sql_stage = """
+    create table stage1 (
+    id INTEGER PRIMARY KEY,
+    date TEXT,
+    mag INTEGER,
+    kassa INTEGER,
+    product TEXT,
+    erpcode TEXT,
+    qnty INTEGER,
+    price INTEGER,
+    sum INTEGER
+    );
+"""
+
+
+def sqlite_try():
+    try:
+        sqlite_connection = sqlite3.connect('stage.db')
+        cursor = sqlite_connection.cursor()
+        print("База данных создана и успешно подключена к SQLite")
+
+        # cursor.execute(sql_stage)
+        # print("Таблица создана")
+        cursor.execute("""select * from stage1;""")
+        print(*cursor.fetchall(), sep='\n')
+
+        cursor.close()
+
+    except sqlite3.Error as error:
+        print("Ошибка при подключении к sqlite", error)
+    finally:
+        if (sqlite_connection):
+            sqlite_connection.close()
+            print("Соединение с SQLite закрыто")
+
+
+sqlite_try()

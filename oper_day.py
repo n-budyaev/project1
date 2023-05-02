@@ -26,9 +26,9 @@ connection = psycopg2.connect(
 
 sql_set = """
     SELECT to_char(pur.datecommit, 'dd-mm-yyyy'),
-    ses.cashnum as kassa, ses.shopnum as mag,
+    ses.shopnum as mag, ses.cashnum as kassa,
     pro.name, pro.erpcode,
-    pos.qnty, pos.priceend, pos.sumfield, pos.excise
+    pos.qnty, pos.priceend, pos.sumfield
 FROM od_session ses
 join od_purchase pur
     on ses.id = pur.id_session
@@ -46,7 +46,9 @@ def sql_query(connection, sql_set):
     try:
         with connection.cursor() as cursor:
             cursor.execute(sql_set)
-            print(*cursor.fetchall(), sep='\n')
+            data_for_stage = cursor.fetchall()
+        return data_for_stage
+            #print(*cursor.fetchall(), sep='\n')
     except Exception as _ex:
         print("[INFO] Error while working with PostgreSQL", _ex)
     finally:
@@ -56,11 +58,10 @@ def sql_query(connection, sql_set):
 
 
 #sql_query(connection, sql_set)
-
+#print(sql_query(connection, sql_set))
 
 sql_stage = """
     create table stage1 (
-    id INTEGER PRIMARY KEY,
     date TEXT,
     mag INTEGER,
     kassa INTEGER,
@@ -79,10 +80,10 @@ def sqlite_try():
         cursor = sqlite_connection.cursor()
         print("База данных создана и успешно подключена к SQLite")
 
-        # cursor.execute(sql_stage)
-        # print("Таблица создана")
-        cursor.execute("""select * from stage1;""")
-        print(*cursor.fetchall(), sep='\n')
+        cursor.execute(sql_stage)
+        print("Таблица создана")
+        #cursor.execute("""drop table stage1;""")
+        #print(*cursor.fetchall(), sep='\n')
 
         cursor.close()
 
@@ -94,4 +95,28 @@ def sqlite_try():
             print("Соединение с SQLite закрыто")
 
 
-sqlite_try()
+#sqlite_try()
+
+def update_stage(param):
+    try:
+        sqlite_connection = sqlite3.connect('stage.db')
+        cursor = sqlite_connection.cursor()
+        print("База данных создана и успешно подключена к SQLite")
+
+        sqlite_insert_query = """INSERT INTO stage1
+                            (date, mag, kassa, product, erpcode, qnty, price, sum)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?);"""
+        cursor.executemany(sqlite_insert_query, param)
+        sqlite_connection.commit()
+        print("Записи успешно вставлены в таблицу stage1", cursor.rowcount)
+        sqlite_connection.commit()
+        cursor.close()
+    except sqlite3.Error as error:
+        print("Ошибка при подключении к sqlite", error)
+    finally:
+        if (sqlite_connection):
+            sqlite_connection.close()
+            print("Соединение с SQLite закрыто")
+
+
+update_stage(sql_query(connection, sql_set))

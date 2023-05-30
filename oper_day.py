@@ -15,6 +15,9 @@
 
 import sqlite3
 import psycopg2
+from psycopg2 import Error
+
+
 from config_con_set import host, user, password, db_name
 
 connection = psycopg2.connect(

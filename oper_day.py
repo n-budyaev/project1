@@ -98,7 +98,7 @@ def sqlite_try():
             print("Соединение с SQLite закрыто")
 
 
-#sqlite_try()
+sqlite_try()
 
 def update_stage(param):
     try:

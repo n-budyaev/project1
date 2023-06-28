@@ -27,24 +27,25 @@ connection = psycopg2.connect(
     database=db_name
 )
 
+#  текст запроса из рабочей базы
 sql_set = """
     SELECT to_char(pur.datecommit, 'dd-mm-yyyy'),
-    ses.shopnum as mag, ses.cashnum as kassa,
-    pro.name, pro.erpcode,
-    pos.qnty, pos.priceend, pos.sumfield
-FROM od_session ses
-join od_purchase pur
-    on ses.id = pur.id_session
-left join od_position pos
-    on pur.id = pos.id_purchase
-join od_product pro
-    ON pos.product_hash = pro.hash
-WHERE pur.checkstatus = 1 AND pur.operationtype is TRUE
-    and ses.cashnum = 1 and ses.shopnum = 44
-order by pur.id desc limit 65;
+        ses.shopnum as mag, ses.cashnum as kassa,
+        pro.name, pro.erpcode,
+        pos.qnty, pos.priceend, pos.sumfield
+    FROM od_session ses
+        join od_purchase pur
+            on ses.id = pur.id_session
+        left join od_position pos
+            on pur.id = pos.id_purchase
+        join od_product pro
+            on pos.product_hash = pro.hash
+    WHERE pur.checkstatus = 0 AND pur.operationtype is TRUE
+        and ses.cashnum = 1 and ses.shopnum = 44
+    ORDER BY pur.id desc limit 1000;
     """
 
-
+#  выполняю запрос из рабочей базы
 def sql_query(connection, sql_set):
     try:
         with connection.cursor() as cursor:
@@ -63,6 +64,10 @@ def sql_query(connection, sql_set):
 #sql_query(connection, sql_set)
 #print(sql_query(connection, sql_set))
 
+# сначала удаляю старые данные вместе с таблицей
+sql_drop_table = """DROP TABLE IF EXISTS stage1;"""
+
+# создаю новую таблицу с нужными полями
 sql_stage = """
     create table stage1 (
     date TEXT,
@@ -76,13 +81,14 @@ sql_stage = """
     );
 """
 
-
+# функция для удаления и создания таблицы stage
 def sqlite_try():
     try:
         sqlite_connection = sqlite3.connect('stage.db')
         cursor = sqlite_connection.cursor()
         print("База данных создана и успешно подключена к SQLite")
 
+        cursor.execute(sql_drop_table)
         cursor.execute(sql_stage)
         print("Таблица создана")
         #cursor.execute("""drop table stage1;""")
@@ -98,13 +104,14 @@ def sqlite_try():
             print("Соединение с SQLite закрыто")
 
 
-sqlite_try()
+sqlite_try()   # запуск запросов для stage
 
+# функция для заполнения таблицы stage данными из рабочей базы
 def update_stage(param):
     try:
         sqlite_connection = sqlite3.connect('stage.db')
         cursor = sqlite_connection.cursor()
-        print("База данных создана и успешно подключена к SQLite")
+        print("База данных успешно подключена к SQLite")
 
         sqlite_insert_query = """INSERT INTO stage1
                             (date, mag, kassa, product, erpcode, qnty, price, sum)

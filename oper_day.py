@@ -28,22 +28,34 @@ connection = psycopg2.connect(
 )
 
 #  текст запроса из рабочей базы
+# sql_set = """
+#     SELECT to_char(pur.datecommit, 'dd-mm-yyyy'),
+#         ses.shopnum as mag, ses.cashnum as kassa,
+#         pro.name, pro.erpcode,
+#         pos.qnty, pos.priceend, pos.sumfield
+#     FROM od_session ses
+#         join od_purchase pur
+#             on ses.id = pur.id_session
+#         left join od_position pos
+#             on pur.id = pos.id_purchase
+#         join od_product pro
+#             on pos.product_hash = pro.hash
+#     WHERE pur.checkstatus = 0 AND pur.operationtype is TRUE
+#         and ses.cashnum = 1 and ses.shopnum = 44
+#     ORDER BY pur.id desc limit 1000;
+#     """
 sql_set = """
-    SELECT to_char(pur.datecommit, 'dd-mm-yyyy'),
-        ses.shopnum as mag, ses.cashnum as kassa,
-        pro.name, pro.erpcode,
-        pos.qnty, pos.priceend, pos.sumfield
-    FROM od_session ses
-        join od_purchase pur
-            on ses.id = pur.id_session
-        left join od_position pos
-            on pur.id = pos.id_purchase
-        join od_product pro
-            on pos.product_hash = pro.hash
-    WHERE pur.checkstatus = 0 AND pur.operationtype is TRUE
-        and ses.cashnum = 1 and ses.shopnum = 44
-    ORDER BY pur.id desc limit 1000;
+    SELECT to_char(dateoperday, 'dd-mm-yyyy') as date, shopnumber as magaz, cashnumber as kassa,
+        amountbycashpurchase/100::NUMERIC(10,2) as nal, amountbycashlesspurchase/100::NUMERIC(10,2) as beznal, amountcashdiscount/100::NUMERIC(10,2) as skidka,
+        countcashpurchase as num_chek_nal, countcashlesspurchase as num_chek_beznal,
+        amountbycashreturn/100::NUMERIC(10,2) as vozvrat_nal, amountbycashlessreturn/100::NUMERIC(10,2) as vozvrat_beznal
+    FROM erpi_zreport z
+    WHERE shopnumber = 50
+    ORDER BY dateoperday desc limit 1000;
     """
+
+
+
 
 #  выполняю запрос из рабочей базы
 def sql_query(connection, sql_set):
@@ -62,7 +74,7 @@ def sql_query(connection, sql_set):
 
 
 #sql_query(connection, sql_set)
-#print(sql_query(connection, sql_set))
+print(sql_query(connection, sql_set))
 
 # сначала удаляю старые данные вместе с таблицей
 sql_drop_table = """DROP TABLE IF EXISTS stage1;"""
@@ -73,11 +85,13 @@ sql_stage = """
     date TEXT,
     mag INTEGER,
     kassa INTEGER,
-    product TEXT,
-    erpcode TEXT,
-    qnty INTEGER,
-    price INTEGER,
-    sum INTEGER
+    nal REAL,
+    beznal REAL,
+    skidka REAL,
+    num_chek_nal INTEGER,
+    num_chek_beznal INTEGER,
+    vozvrat_nal REAL,
+    vozvrat_beznal REAL
     );
 """
 
@@ -114,8 +128,8 @@ def update_stage(param):
         print("База данных успешно подключена к SQLite")
 
         sqlite_insert_query = """INSERT INTO stage1
-                            (date, mag, kassa, product, erpcode, qnty, price, sum)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?);"""
+                            (date, mag, kassa, nal, beznal, skidka, num_chek_nal, num_chek_beznal, vozvrat_nal, vozvrat_beznal)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"""
         cursor.executemany(sqlite_insert_query, param)
         sqlite_connection.commit()
         print("Записи успешно вставлены в таблицу stage1", cursor.rowcount)

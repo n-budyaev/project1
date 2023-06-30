@@ -44,6 +44,22 @@ connection = psycopg2.connect(
 #         and ses.cashnum = 1 and ses.shopnum = 44
 #     ORDER BY pur.id desc limit 1000;
 #     """
+# sql_set = """
+#     SELECT to_char(pur.datecommit, 'dd-mm-yyyy'),
+#         ses.shopnum as mag, ses.cashnum as kassa,
+#         pro.name, pro.erpcode,
+#         pos.qnty, pos.priceend, pos.sumfield
+#     FROM od_session ses
+#         join od_purchase pur
+#             on ses.id = pur.id_session
+#         left join od_position pos
+#             on pur.id = pos.id_purchase
+#         join od_product pro
+#             on pos.product_hash = pro.hash
+#     WHERE pur.checkstatus = 0 AND pur.operationtype is TRUE
+#         and ses.cashnum = 1 and ses.shopnum = 44
+#     ORDER BY pur.id desc limit 1000;
+#     """
 sql_set = """
     SELECT to_char(dateoperday, 'dd-mm-yyyy') as date, shopnumber as magaz, cashnumber as kassa,
         amountbycashpurchase as nal, amountbycashlesspurchase as beznal, amountcashdiscount as skidka,
@@ -53,6 +69,9 @@ sql_set = """
     --WHERE shopnumber = 50
     --ORDER BY dateoperday desc limit 1000;
     """
+
+
+
 
 
 
@@ -85,6 +104,13 @@ sql_stage = """
     date TEXT,
     mag INTEGER,
     kassa INTEGER,
+    nal REAL,
+    beznal REAL,
+    skidka REAL,
+    num_chek_nal INTEGER,
+    num_chek_beznal INTEGER,
+    vozvrat_nal REAL,
+    vozvrat_beznal REAL
     nal REAL,
     beznal REAL,
     skidka REAL,
@@ -128,6 +154,8 @@ def update_stage(param):
         print("База данных успешно подключена к SQLite")
 
         sqlite_insert_query = """INSERT INTO stage1
+                            (date, mag, kassa, nal, beznal, skidka, num_chek_nal, num_chek_beznal, vozvrat_nal, vozvrat_beznal)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"""
                             (date, mag, kassa, nal, beznal, skidka, num_chek_nal, num_chek_beznal, vozvrat_nal, vozvrat_beznal)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"""
         cursor.executemany(sqlite_insert_query, param)
